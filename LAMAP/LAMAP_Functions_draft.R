@@ -1,42 +1,40 @@
-### LAMAP 
-### Trying to figure out of npudist or npudens.  I think dens, but so far all zero propbabilities (densities)
+### LAMAP v0.01 PRE-ALPHA
+### 
 
+# Required packages
+require(np)
+require(raster)
+require(rgeos)
+# end packages 
+
+rounding_factor <- 1
+predRast <- buildModel(NULL, vect_pts, training_df, r_stack, MASK, rounding_factor)
+
+# function to check for zero-variance in variable measurements at a given site (cat)
 constantCheck <- function(training_df, cols_select){
-  groups <- unique(training_df$cat)
+  groups <- unique(training_df$cat) # unique sites
   for(i in seq_along(groups)){
     d <- training_df[which(training_df$cat == groups[i]),]
     uniqueLength <- apply(d[,cols_select],2,function(x) length(unique(x)))
     for(j in length(uniqueLength)){
       if(1 %in% uniqueLength[j]){
         value <- training_df[which(training_df$cat == groups[i]),cols_select[j]][1]
-        training_df[which(training_df$cat == groups[i]),cols_select[j]][1] <- value + 0.1
+        training_df[which(training_df$cat == groups[i]),cols_select[j]][1] <- value + 0.1 # arbitrary adjustment
       }
     }
   }
   return(training_df)
 }
 
-require(np)
-require(raster)
-require(rgeos)
-
-# training_df <- backup
-# training_df[,1:2] <- scale(training_df[,1:2]) # might be worth a try, but need to do to raster as well
-rounding_factor <- 1
-predRast <- buildModel(NULL, vect_pts, training_df, r_stack, MASK, rounding_factor)
 
 buildModel <- function(outrastname,vect_pts,training_df,r_stack, MASK, distkernel="uniform", rounding_factor) {
-	print(paste('Process began at',Sys.time()))
-	rast_list <- r_stack
-	rasts <- names(r_stack)
-	##prepare grid for holding probabilities
-	print('Extracting raster MASK as probability grid from GRASS')
-# 	modelRast <- raster(MASK)
-# 	projection(modelRast) <- CRS('proj4string') # need to complete
+	# print(paste('Process began at',Sys.time()))
+	# rasts <- names(r_stack) $not used?
+
 	cols_select <- colnames(training_df)[!(colnames(training_df) %in% c("cat","x","y"))]
-  training_df[,cols_select] <- round(training_df[,cols_select],rounding_factor) # reduce percision of data 
-  training_df <- constantCheck(training_df, cols_select) # check for constant values on sites, add 0.1 if so
-  siteNames <- unique(training_df$cat)
+	training_df[,cols_select] <- round(training_df[,cols_select],rounding_factor) # reduce percision of data 
+	training_df <- constantCheck(training_df, cols_select) # check for constant values on sites, add 0.1 if so
+	siteNames <- unique(training_df$cat)
 	npu_pdf_bw <- list() # empty list
 	for (j in seq_along(siteNames)) { # For each site
     siteData <- training_df[which(training_df$cat == siteNames[j]), cols_select]
